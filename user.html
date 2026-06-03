@@ -308,7 +308,6 @@
     btn.style.background = "#e67e22";
     btn.disabled = true;
     
-    // Hide previous hints
     document.getElementById('hint-make').style.display = 'none';
     document.getElementById('hint-model').style.display = 'none';
 
@@ -403,33 +402,43 @@
              if(colorValue.length > 2 && colorValue.length < 40) document.querySelector('input[name="color"]').value = colorValue;
          }
 
-         // 7. Make & Model UI Hint (Inline Labels - 🔥 UPGRADED 🔥)
+         // 7. Make & Model UI Hint (Inline Labels - 🔥 SUPER UPGRADED 🔥)
          let makeValue = "";
          let modelValue = "";
 
-         // A) Make - Database Fallback Check (Highly Accurate for SL CRs)
-         const makesList = ['BAJAJ', 'HONDA', 'TVS', 'YAMAHA', 'SUZUKI', 'TOYOTA', 'NISSAN', 'MITSUBISHI', 'HERO', 'MAHINDRA', 'TATA', 'MICRO', 'MARUTI', 'PIAGGIO', 'DEMAK', 'LEYLAND', 'ISUZU', 'MAZDA', 'KIA', 'HYUNDAI', 'FORD', 'CHEVROLET', 'MG', 'RENAULT', 'DATSUN', 'DAIHATSU', 'PEUGEOT'];
+         // OCR Auto-Corrector for common Sri Lankan CR mistakes (Fixes BAJAL to BAJAJ etc.)
+         let correctedText = text.replace(/BAJAL/g, 'BAJAJ')
+                                 .replace(/CTION/g, 'CT100')
+                                 .replace(/YAMAKA/g, 'YAMAHA')
+                                 .replace(/8AJAJ/g, 'BAJAJ')
+                                 .replace(/M0DEL/g, 'MODEL')
+                                 .replace(/MODE\s/g, 'MODEL ');
+
+         // A) Make Check
+         const makesList = ['BAJAJ', 'HONDA', 'TVS', 'YAMAHA', 'SUZUKI', 'TOYOTA', 'NISSAN', 'MITSUBISHI', 'HERO', 'MAHINDRA', 'TATA', 'MICRO', 'MARUTI', 'PIAGGIO', 'DEMAK', 'LEYLAND', 'ISUZU', 'MAZDA', 'KIA', 'HYUNDAI', 'FORD', 'CHEVROLET', 'MG', 'RENAULT', 'DATSUN', 'DAIHATSU', 'PEUGEOT', 'KTM', 'WULING'];
          for(let m of makesList) {
-             if(text.includes(m)) { makeValue = m; break; }
+             if(correctedText.includes(m)) { makeValue = m; break; }
          }
-         // Regular Regex if not found in list
+         
          if(!makeValue) {
-             let makeMatch = text.match(/MAKE[\s\S]{0,40}?\b([A-Z]{3,15})\b/i);
-             if(makeMatch && makeMatch[1] !== "MODEL" && makeMatch[1] !== "AND") makeValue = makeMatch[1].trim();
+             let makeMatch = correctedText.match(/(?:MAKE|MAKF)[\s\S]{0,30}?\n\s*([A-Z]{3,15})/i) || correctedText.match(/MAKE[^\wA-Z]*([A-Z]{3,15})/i);
+             if(makeMatch) {
+                 let tempMake = makeMatch[1].trim();
+                 if(!['MODEL','AND','THE','THIS'].includes(tempMake)) makeValue = tempMake;
+             }
          }
 
-         // B) Model - Advanced Regex Check
-         let modelMatch = text.match(/MODEL[\s\S]{0,40}?\n\s*([A-Z0-9\-]{2,15})/i) || text.match(/MODEL[\s\S]{0,40}?\b([A-Z0-9\-]{2,15})\b/i);
+         // B) Model Check
+         let modelMatch = correctedText.match(/(?:MODEL|MODE|MOD)[\s\S]{0,30}?\n\s*([A-Z0-9\-]{2,15})/i) || correctedText.match(/(?:MODEL|MODE)[\s\S]{0,20}?\b([A-Z0-9\-]{2,15})\b/i);
          if(modelMatch) {
              let tempModel = modelMatch[1].trim();
-             // Prevent taking generic CR words as the model
-             let badWords = ['WHEEL', 'BASE', 'TYPE', 'BODY', 'MAKE', 'YEAR', 'COLOR', 'COLOUR', 'CAPACITY'];
-             if(!badWords.some(w => tempModel.includes(w))) {
+             let badWords = ['WHEEL', 'BASE', 'TYPE', 'BODY', 'MAKE', 'YEAR', 'COLOR', 'COLOUR', 'CAPACITY', 'PETROL', 'DIESEL', 'MOTOR', 'CYCLE', 'LIGHT', 'OPEN', 'SALOON'];
+             if(!badWords.some(w => tempModel === w || tempModel.includes('WHEEL'))) {
                  modelValue = tempModel;
              }
          }
 
-         // Displaying the Hints
+         // Show Hints in the Yellow Box
          if (makeValue) {
              document.getElementById('hint-make').innerHTML = `💡 AI: <strong>${makeValue}</strong>`;
              document.getElementById('hint-make').style.display = 'inline-block';
