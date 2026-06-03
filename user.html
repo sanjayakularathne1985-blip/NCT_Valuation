@@ -99,6 +99,13 @@
         <div class="section">
           <div class="full-width"><label>Vehicle Number</label><input type="text" name="vehicleNo" required></div>
           <div><label>Vehicle Type</label><select id="vType" name="vType" onchange="updateMake();" required><option value="">Loading...</option></select></div>
+          
+          <!-- AI Detected Make/Model Hint Box (Hidden default) -->
+          <div class="full-width" id="ocr-make-model-hint" style="display:none; background:#fff3cd; border:1px solid #ffeeba; color:#856404; padding:12px; border-radius:5px; font-size:14px; font-weight:bold; margin-bottom:5px;">
+            💡 AI Detected: Make = <span id="ocr-make-val" style="color:#d35400; font-size:16px;"></span> | Model = <span id="ocr-model-val" style="color:#d35400; font-size:16px;"></span><br>
+            <span style="font-weight:normal; font-size:12px; color:#555;">(Please select the matching options from the dropdowns below)</span>
+          </div>
+
           <div><label>Make</label><select id="make" name="make" onchange="updateModel();" required disabled><option value="">-- Select Make --</option></select></div>
           <div><label>Model</label><select id="model" name="model" required disabled><option value="">-- Select Model --</option></select></div>
           <div><label>Year of Manufacture (YOM)</label><input type="number" name="yom" id="form-yom" required></div>
@@ -294,6 +301,9 @@
     btn.innerText = "⏳ Scanning CR...";
     btn.style.background = "#e67e22";
     btn.disabled = true;
+    
+    // Hide the hint initially
+    document.getElementById('ocr-make-model-hint').style.display = 'none';
 
     try {
       let file = crInput.files[0];
@@ -350,31 +360,22 @@
             if (eMatch && /\d/.test(eMatch[1]) && eMatch[1] !== chassisVal) { document.getElementById('form-engine').value = eMatch[1].trim(); break; }
          }
 
-         // 5. Engine CC (🔴 THE ULTIMATE FIX FOR BOTH PDF AND JPG 🔴)
+         // 5. Engine CC
          let ccValue = null;
-         
-         // පළවෙනි උත්සාහය: හරියටම අකුරු 2කට කලින් තියෙන CC හොයනවා
          let exactCcMatch = text.match(/\b(\d{2,4}(?:\.\d{1,2})?)\s*(?:CC|C\.C|C)\b/i);
          if (exactCcMatch) {
              ccValue = parseFloat(exactCcMatch[1]);
          } else {
-             // දෙවෙනි උත්සාහය: "CAPACITY" හෝ "CYLINDER" වචනෙට යටින් තියෙන එක
              let capMatch = text.match(/(?:CAPACITY|CYLINDER)[\s\S]{0,35}?\b(\d{2,6}(?:\.\d{1,2})?)\b/i);
              if (capMatch) ccValue = parseFloat(capMatch[1]);
          }
-
-         // තුන්වෙනි උත්සාහය (Fallback for JPG): වචන ඔක්කොම මැකිලා ඉලක්කම විතරක් තිබුණොත්
          if (!ccValue) {
              let orphanMatch = text.match(/\b(997700|9928|9927|99\.27|99)\b/);
              if (orphanMatch) ccValue = parseFloat(orphanMatch[1]);
          }
 
          if (ccValue) {
-             // 500ට වඩා අඩු වෙනකම් 10න් බෙදෙනවා (දින වලින් බේරෙන්න)
-             while (ccValue > 500) {
-                 ccValue = ccValue / 10;
-             }
-             
+             while (ccValue > 500) { ccValue = ccValue / 10; }
              if (ccValue >= 49 && ccValue <= 500) {
                  document.querySelector('input[name="engCc"]').value = Math.round(ccValue); 
              }
@@ -383,30 +384,31 @@
          // 6. Color
          let colorRegex = /COLOUR[\s\S]{0,30}?\n([A-Z\s\-\/]+)/i;
          let colorMatch = text.match(colorRegex);
-         
          if (!colorMatch) {
              const colorNames = ['BLACK', 'RED', 'BLUE', 'WHITE', 'GREY', 'GRAY', 'SILVER', 'GREEN', 'YELLOW', 'MAROON', 'ASH', 'ORANGE', 'BROWN', 'GOLD', 'PURPLE', 'PINK'];
              let lines = text.split('\n');
              for(let line of lines) {
-                 if (colorNames.some(c => line.includes(c))) {
-                     colorMatch = [line, line.trim()];
-                     break;
-                 }
+                 if (colorNames.some(c => line.includes(c))) { colorMatch = [line, line.trim()]; break; }
              }
          }
-
          if (colorMatch && colorMatch[1]) {
              let colorValue = colorMatch[1].trim().replace(/[\n\r]+/g, ' ');
-             if(colorValue.length > 2 && colorValue.length < 40) {
-                 document.querySelector('input[name="color"]').value = colorValue;
-             }
+             if(colorValue.length > 2 && colorValue.length < 40) document.querySelector('input[name="color"]').value = colorValue;
          }
 
-         // Make & Model Alert
-         let makeText = text.match(/MAKE[\s\S]{0,30}?\n([A-Z]+)/); let modelText = text.match(/MODEL[\s\S]{0,30}?\n([A-Z0-9\-]+)/);
-         let makeModelAlert = ""; if(makeText && modelText) { makeModelAlert = `\n\n📌 Detected Make: ${makeText[1]}\n📌 Detected Model: ${modelText[1]}\n(Please select these from the dropdowns)`; }
+         // 7. Make & Model UI Hint Box
+         let makeText = text.match(/MAKE[\s\S]{0,30}?\n([A-Z]+)/); 
+         let modelText = text.match(/MODEL[\s\S]{0,30}?\n([A-Z0-9\-]+)/);
+         
+         if (makeText || modelText) {
+             let mk = makeText ? makeText[1].trim() : "Not Found";
+             let md = modelText ? modelText[1].trim() : "Not Found";
+             document.getElementById('ocr-make-val').innerText = mk;
+             document.getElementById('ocr-model-val').innerText = md;
+             document.getElementById('ocr-make-model-hint').style.display = 'block';
+         }
 
-         alert("✅ Scanning Complete! Please double-check the filled details in the form." + makeModelAlert);
+         alert("✅ Scanning Complete! Please double-check the filled details in the form.");
       }
     } catch (e) {
       alert("❌ Error connecting to OCR Server. Please fill the details manually.");
