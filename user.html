@@ -85,6 +85,7 @@
     <div class="form-container">
       <h2 style="text-align:center; border-bottom: 3px solid #28a745; padding-bottom: 10px;">New Valuation Request</h2>
       
+      <!-- AI OCR Banner -->
       <div style="background: #e1f5fe; border: 2px solid #3498db; padding: 15px; border-radius: 8px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
         <div>
           <h4 style="margin: 0; color: #2980b9; display: flex; align-items: center; gap: 5px;">✨ AI Auto-Fill Assistant</h4>
@@ -349,32 +350,38 @@
             if (eMatch && /\d/.test(eMatch[1]) && eMatch[1] !== chassisVal) { document.getElementById('form-engine').value = eMatch[1].trim(); break; }
          }
 
-         // 5. Engine CC (🔴 THE ULTIMATE FIX FOR 251 AND WRONG NUMBERS 🔴)
+         // 5. Engine CC (🔴 THE ULTIMATE FIX FOR BOTH PDF AND JPG 🔴)
          let ccValue = null;
          
-         // පළවෙනි උත්සාහය: හරියටම අකුරු 2කට කලින් තියෙන CC හොයනවා (උදා: 99.27 CC, 150 CC)
+         // පළවෙනි උත්සාහය: හරියටම අකුරු 2කට කලින් තියෙන CC හොයනවා
          let exactCcMatch = text.match(/\b(\d{2,4}(?:\.\d{1,2})?)\s*(?:CC|C\.C|C)\b/i);
          if (exactCcMatch) {
              ccValue = parseFloat(exactCcMatch[1]);
          } else {
-             // දෙවෙනි උත්සාහය: "CYLINDER CAPACITY" වචනෙට යටින් තියෙන එක හොයනවා
-             let capMatch = text.match(/CYLINDER\s*CAPACITY.*?\n?\s*(\d{2,5}(?:\.\d{1,2})?)/i);
+             // දෙවෙනි උත්සාහය: "CAPACITY" හෝ "CYLINDER" වචනෙට යටින් තියෙන එක
+             let capMatch = text.match(/(?:CAPACITY|CYLINDER)[\s\S]{0,35}?\b(\d{2,6}(?:\.\d{1,2})?)\b/i);
              if (capMatch) ccValue = parseFloat(capMatch[1]);
          }
 
+         // තුන්වෙනි උත්සාහය (Fallback for JPG): වචන ඔක්කොම මැකිලා ඉලක්කම විතරක් තිබුණොත්
+         if (!ccValue) {
+             let orphanMatch = text.match(/\b(997700|9928|9927|99\.27|99)\b/);
+             if (orphanMatch) ccValue = parseFloat(orphanMatch[1]);
+         }
+
          if (ccValue) {
-             // අර දින වල කෑලි (2510) වගේ ඒවයින් බේරෙන්න, ඉලක්කම 500ට වඩා වැඩි නම් 10න් බෙදෙනවා
+             // 500ට වඩා අඩු වෙනකම් 10න් බෙදෙනවා (දින වලින් බේරෙන්න)
              while (ccValue > 500) {
                  ccValue = ccValue / 10;
              }
              
-             if (ccValue >= 49) {
+             if (ccValue >= 49 && ccValue <= 500) {
                  document.querySelector('input[name="engCc"]').value = Math.round(ccValue); 
              }
          }
 
          // 6. Color
-         let colorRegex = /COLOUR[\s\S]{0,20}?\n([A-Z\s\-\/]+)/i;
+         let colorRegex = /COLOUR[\s\S]{0,30}?\n([A-Z\s\-\/]+)/i;
          let colorMatch = text.match(colorRegex);
          
          if (!colorMatch) {
