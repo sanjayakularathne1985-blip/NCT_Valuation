@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NCT Valuation Request - Admin</title>
+  
+  <script src="config.js"></script>
+
   <style>
     body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;color:#2d3436;margin:0;padding:0}
     .top-bar{background:#1a252f;padding:15px 30px;display:flex;justify-content:space-between;align-items:center;color:white;position:sticky;top:0;z-index:100}
@@ -107,17 +110,15 @@
     </div>
   </div>
 
-  
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbxQnG15Y2Vi_55sfOnHJai8tVVwMDsDSLDvA5kwEQa3e-rCaeoKohmPjTiP_fAA2lJS/exec"; 
   let currentUser = null;
-  let globalRecentData = []; // NEW variable to store recent data
+  let globalRecentData = []; 
 
   window.onload = function() {
     const saved = localStorage.getItem('tdt_user');
     if (!saved) { window.location.href = 'index.html'; return; }
     currentUser = JSON.parse(saved);
-    if (currentUser.role !== 'Admin') { window.location.href = 'index.html'; return; } // Role Protection
+    if (currentUser.role !== 'Admin') { window.location.href = 'index.html'; return; } 
     
     document.getElementById('main-body').style.display = 'block';
     document.getElementById('welcomeMsg').innerText = `👑 ${currentUser.username} (Admin)`;
@@ -145,7 +146,7 @@
         let tbody = document.getElementById('summaryTableBody');
         if(!res.data || !res.data.length) { tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>No data found</td></tr>"; return; }
         
-        globalRecentData = res.data; // Saving data for View popup
+        globalRecentData = res.data; 
 
         tbody.innerHTML = res.data.map((r, index) => `
           <tr>
