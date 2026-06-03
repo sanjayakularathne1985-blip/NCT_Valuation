@@ -100,14 +100,20 @@
           <div class="full-width"><label>Vehicle Number</label><input type="text" name="vehicleNo" required></div>
           <div><label>Vehicle Type</label><select id="vType" name="vType" onchange="updateMake();" required><option value="">Loading...</option></select></div>
           
-          <!-- AI Detected Make/Model Hint Box (Hidden default) -->
-          <div class="full-width" id="ocr-make-model-hint" style="display:none; background:#fff3cd; border:1px solid #ffeeba; color:#856404; padding:12px; border-radius:5px; font-size:14px; font-weight:bold; margin-bottom:5px;">
-            💡 AI Detected: Make = <span id="ocr-make-val" style="color:#d35400; font-size:16px;"></span> | Model = <span id="ocr-model-val" style="color:#d35400; font-size:16px;"></span><br>
-            <span style="font-weight:normal; font-size:12px; color:#555;">(Please select the matching options from the dropdowns below)</span>
+          <!-- Make & Model with Inline AI Hints -->
+          <div style="position:relative;">
+            <label>Make 
+              <span id="hint-make" style="display:none; margin-left:8px; font-size:12px; background:#fff3cd; color:#d35400; padding:2px 8px; border-radius:12px; font-weight:bold; border:1px solid #ffeeba;"></span>
+            </label>
+            <select id="make" name="make" onchange="updateModel();" required disabled><option value="">-- Select Make --</option></select>
+          </div>
+          <div style="position:relative;">
+            <label>Model 
+              <span id="hint-model" style="display:none; margin-left:8px; font-size:12px; background:#fff3cd; color:#d35400; padding:2px 8px; border-radius:12px; font-weight:bold; border:1px solid #ffeeba;"></span>
+            </label>
+            <select id="model" name="model" required disabled><option value="">-- Select Model --</option></select>
           </div>
 
-          <div><label>Make</label><select id="make" name="make" onchange="updateModel();" required disabled><option value="">-- Select Make --</option></select></div>
-          <div><label>Model</label><select id="model" name="model" required disabled><option value="">-- Select Model --</option></select></div>
           <div><label>Year of Manufacture (YOM)</label><input type="number" name="yom" id="form-yom" required></div>
         </div>
         <h3 style="color:#28a745; border-left:4px solid #28a745; padding-left:10px;">2. Technical & Details</h3>
@@ -302,8 +308,9 @@
     btn.style.background = "#e67e22";
     btn.disabled = true;
     
-    // Hide the hint initially
-    document.getElementById('ocr-make-model-hint').style.display = 'none';
+    // Hide previous hints
+    document.getElementById('hint-make').style.display = 'none';
+    document.getElementById('hint-model').style.display = 'none';
 
     try {
       let file = crInput.files[0];
@@ -396,16 +403,21 @@
              if(colorValue.length > 2 && colorValue.length < 40) document.querySelector('input[name="color"]').value = colorValue;
          }
 
-         // 7. Make & Model UI Hint Box
-         let makeText = text.match(/MAKE[\s\S]{0,30}?\n([A-Z]+)/); 
-         let modelText = text.match(/MODEL[\s\S]{0,30}?\n([A-Z0-9\-]+)/);
+         // 7. Make & Model UI Hint (Inline Labels)
+         // දියුණු කරපු AI Logic එක (CR එකේ Make / Model අල්ලගන්න)
+         let makeMatch = text.match(/MAKE[^\n]*\n\s*([A-Z]{3,15})/i) || text.match(/MAKE[^\wA-Z]*([A-Z]{3,15})/i);
+         let modelMatch = text.match(/MODEL[^\n]*\n\s*([A-Z0-9\-]{2,15})/i) || text.match(/MODEL[^\wA-Z]*([A-Z0-9\-]{2,15})/i);
+
+         if (makeMatch && makeMatch[1] && makeMatch[1].trim().length > 1) {
+             let mk = makeMatch[1].trim();
+             document.getElementById('hint-make').innerHTML = `💡 AI: <strong>${mk}</strong>`;
+             document.getElementById('hint-make').style.display = 'inline-block';
+         }
          
-         if (makeText || modelText) {
-             let mk = makeText ? makeText[1].trim() : "Not Found";
-             let md = modelText ? modelText[1].trim() : "Not Found";
-             document.getElementById('ocr-make-val').innerText = mk;
-             document.getElementById('ocr-model-val').innerText = md;
-             document.getElementById('ocr-make-model-hint').style.display = 'block';
+         if (modelMatch && modelMatch[1] && modelMatch[1].trim().length > 1) {
+             let md = modelMatch[1].trim();
+             document.getElementById('hint-model').innerHTML = `💡 AI: <strong>${md}</strong>`;
+             document.getElementById('hint-model').style.display = 'inline-block';
          }
 
          alert("✅ Scanning Complete! Please double-check the filled details in the form.");
