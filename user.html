@@ -266,7 +266,6 @@
   async function uploadImageAsync(imageObj) { const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "uploadImage", data: imageObj }) }); const resData = await res.json(); return resData.success ? { success: true, key: resData.result.key, url: resData.result.url } : { success: false, error: resData.error }; }
 
   // ---------------- AI OCR FUNCTIONALITY ----------------
-  // ---------------- AI OCR FUNCTIONALITY ----------------
   async function extractCRData() {
     const crInput = document.getElementById('cr_file_input');
     if (!crInput.files || crInput.files.length === 0) {
@@ -295,10 +294,12 @@
       if (result.IsErroredOnProcessing) {
          alert("❌ OCR Error: " + result.ErrorMessage[0]);
       } else if (result.ParsedResults && result.ParsedResults.length > 0) {
-         // පෙළ සකස් කිරීම
          let text = result.ParsedResults[0].ParsedText.toUpperCase();
          
-         // 1. Vehicle Number එක හොයමු (උදා: SG BBZ-2636, WP ABC-1234, 300-1234)
+         // 🔴 මේකෙන් අපිට බලාගන්න පුළුවන් OCR එකට හරියටම මොනවද පේන්නේ කියලා 🔴
+         console.log("🔍 === OCR SCANNED TEXT === \n", text);
+
+         // 1. Vehicle Number එක හොයමු
          let vehMatch = text.match(/\b([A-Z]{2}\s[A-Z]{2,3}-\d{4}|[A-Z]{2,3}-\d{4}|[0-9]{2,3}-\d{4})\b/);
          if (vehMatch) {
             document.querySelector('input[name="vehicleNo"]').value = vehMatch[1].trim();
@@ -306,25 +307,39 @@
 
          // 2. YOM (නිෂ්පාදිත වර්ෂය) හොයමු
          let singleLineText = text.replace(/\s+/g, ' ');
-         let yomMatch = singleLineText.match(/(?:YEAR OF MANUFACTURE|MANUFACTURE|YOM|YEAR)[\s\S]{0,30}?(19[5-9]\d|20[0-2]\d)/);
+         let yomMatch = singleLineText.match(/(?:YEAR OF MANUFACTURE|MANUFACTURE|YOM|YEAR)[\s\S]{0,40}?(19[5-9]\d|20[0-2]\d)/);
          if (!yomMatch) yomMatch = singleLineText.match(/\b(19[5-9]\d|20[0-2]\d)\b/); 
          if (yomMatch) document.getElementById('form-yom').value = yomMatch[1];
 
-         // 3. Chassis Number එක හොයමු (අනිවාර්යයෙන් ඉලක්කම් තියෙන්න ඕනේ කියලා filter කරමු)
-         let chassisRegex = /CHASSIS[\s\S]{0,40}?\b([A-Z0-9]{10,17})\b/g;
+         // 3. Chassis Number එක හොයමු
+         let chassisVal = "";
+         let chassisRegex = /CHASSIS[\s\S]{0,50}?\b([A-Z0-9]{10,17})\b/g;
          let cMatch;
          while ((cMatch = chassisRegex.exec(text)) !== null) {
-            if (/\d/.test(cMatch[1])) { document.getElementById('form-chassis').value = cMatch[1].trim(); break; }
+            if (/\d/.test(cMatch[1])) { 
+               chassisVal = cMatch[1].trim(); 
+               document.getElementById('form-chassis').value = chassisVal; 
+               break; 
+            }
          }
 
-         // 4. Engine Number එක හොයමු (අනිවාර්යයෙන් ඉලක්කම් තියෙන්න ඕනේ)
-         let engineRegex = /ENGINE[\s\S]{0,50}?\b([A-Z0-9]{5,17})\b/g;
-         let eMatch;
-         while ((eMatch = engineRegex.exec(text)) !== null) {
-            if (/\d/.test(eMatch[1])) { document.getElementById('form-engine').value = eMatch[1].trim(); break; }
+         // 4. Engine Number එක හොයමු (අලුත් ක්‍රමය - වඩාත් නිවැරදියි)
+         let engineRegexes = [
+            /ENGINE\s*NO[\s\S]{0,40}?\b([A-Z0-9]{5,18})\b/,
+            /ENGINE[\s\S]{0,80}?\b([A-Z0-9]{5,18})\b/,
+            /ENG[\s\S]{0,80}?\b([A-Z0-9]{5,18})\b/,
+            /NO[\s\S]{0,20}?\b([A-Z0-9]{5,18})\b/ 
+         ];
+
+         for (let reg of engineRegexes) {
+            let eMatch = text.match(reg);
+            if (eMatch && /\d/.test(eMatch[1]) && eMatch[1] !== chassisVal) {
+               document.getElementById('form-engine').value = eMatch[1].trim();
+               break;
+            }
          }
-         
-         // 5. Make සහ Model එක පෙන්නන්න ගන්න උත්සාහය
+
+         // 5. Make සහ Model (Alert එකෙන් පෙන්වන්න)
          let makeText = text.match(/MAKE[\s\S]{0,30}?\n([A-Z]+)/);
          let modelText = text.match(/MODEL[\s\S]{0,30}?\n([A-Z0-9\-]+)/);
          let makeModelAlert = "";
@@ -342,7 +357,7 @@
     btn.style.background = "#3498db";
     btn.disabled = false;
   }
-  // ------------------------------------------------------  
+  // ------------------------------------------------------  // ------------------------------------------------------  
   document.getElementById('vForm').onsubmit = async (e) => {
     e.preventDefault(); const btn = document.getElementById('submitBtn'); const status = document.getElementById('status'); btn.disabled = true;
     const formData = {}; e.target.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => formData[input.name] = input.value); formData.requesterEmail = currentUser.email;
