@@ -301,14 +301,12 @@
       let base64Data;
 
       if (file.type === "application/pdf") {
-          // Compress නොකර PDF එක කෙලින්ම ගන්නවා
           base64Data = await new Promise((resolve) => {
               let reader = new FileReader();
               reader.onload = (e) => resolve(e.target.result);
               reader.readAsDataURL(file);
           });
       } else {
-          // Photo එකක් නම් Compress කරනවා
           let compressed = await compressImage(file, 1200, 0.7);
           base64Data = "data:image/jpeg;base64," + compressed.data;
       }
@@ -353,25 +351,42 @@
             if (eMatch && /\d/.test(eMatch[1]) && eMatch[1] !== chassisVal) { document.getElementById('form-engine').value = eMatch[1].trim(); break; }
          }
 
-         // 5. Engine CC (අලුතින් එකතු කළ කොටස)
-         let ccRegex = /\b(\d{2,4}(?:\.\d{1,2})?)\s*CC\b/g;
+         // 5. Engine CC (දියුණු කළ ක්‍රමය)
+         let ccRegex = /\b(\d{2,4}(?:\.\d{1,2})?)\s*(?:CC|C\.C|C|00)\b/i;
          let ccMatch = text.match(ccRegex);
-         if (!ccMatch) ccMatch = text.match(/CAPACITY[\s\S]{0,20}?\b(\d{2,4}(?:\.\d{1,2})?)\b/);
+         if (!ccMatch) ccMatch = text.match(/CAPACITY[\s\S]{0,30}?\b(\d{2,4}(?:\.\d{1,2})?)\b/i);
          if (ccMatch) {
-             let ccValue = ccMatch[0].replace(/[^0-9.]/g, ''); // අකුරු අයින් කරලා ඉලක්කම් විතරක් ගන්නවා
-             document.querySelector('input[name="engCc"]').value = Math.round(parseFloat(ccValue)); 
+             let ccValue = ccMatch[1] ? ccMatch[1].replace(/[^0-9.]/g, '') : ccMatch[0].replace(/[^0-9.]/g, ''); 
+             let num = parseFloat(ccValue);
+             if(num > 10 && num < 10000) document.querySelector('input[name="engCc"]').value = Math.round(num); 
          }
 
-         // 6. Color (අලුතින් එකතු කළ කොටස)
-         let colorRegex = /COLOUR[\s\S]{0,30}?\n([A-Z\s\-\/]+)/;
+         // 6. Color (පාටවල නම් වලින්ම හොයන ක්‍රමය)
+         let colorRegex = /COLOUR[\s\S]{0,30}?\n([A-Z\s\-\/]+)/i;
          let colorMatch = text.match(colorRegex);
-         if (colorMatch && colorMatch[1].trim().length > 2) {
+         
+         if (!colorMatch) {
+             // 'COLOUR' වචනේ නැත්තම්, මේ පාටක් තියෙනවද කියලා හොයනවා
+             const colorNames = ['BLACK', 'RED', 'BLUE', 'WHITE', 'GREY', 'GRAY', 'SILVER', 'GREEN', 'YELLOW', 'MAROON', 'ASH', 'ORANGE', 'BROWN', 'GOLD', 'PURPLE', 'PINK'];
+             let lines = text.split('\n');
+             for(let line of lines) {
+                 if (colorNames.some(c => line.includes(c))) {
+                     colorMatch = [line, line.trim()];
+                     break;
+                 }
+             }
+         }
+
+         if (colorMatch && colorMatch[1]) {
              let colorValue = colorMatch[1].trim().replace(/[\n\r]+/g, ' ');
-             // අනවශ්‍ය දිග වාක්‍ය ආවොත් කපලා දාන්න
-             if(colorValue.length < 30) document.querySelector('input[name="color"]').value = colorValue;
+             // ගොඩක් දිග වාක්‍ය ආවොත් අයින් කරනවා
+             if(colorValue.length > 2 && colorValue.length < 40) {
+                 document.querySelector('input[name="color"]').value = colorValue;
+             }
          }
 
          // Make & Model Alert
+        
          let makeText = text.match(/MAKE[\s\S]{0,30}?\n([A-Z]+)/); let modelText = text.match(/MODEL[\s\S]{0,30}?\n([A-Z0-9\-]+)/);
          let makeModelAlert = ""; if(makeText && modelText) { makeModelAlert = `\n\n📌 Detected Make: ${makeText[1]}\n📌 Detected Model: ${modelText[1]}\n(Please select these from the dropdowns)`; }
 
@@ -385,8 +400,8 @@
     btn.style.background = "#3498db";
     btn.disabled = false;
   }
-  // ------------------------------------------------------
-  // Zoom Modal Logic
+  // ------------------------------------------------------  // 
+  Zoom Modal Logic
   var modal = document.getElementById("imgModal"), img = document.getElementById("fullImage"), container = document.getElementById("modalContainer");
   var scale = 1, rotateDeg = 0, panning = false, pointX = 0, pointY = 0, startX = 0, startY = 0;
   function openModal(src) { modal.style.display = "block"; img.src = src; scale = 1; rotateDeg = 0; pointX = 0; pointY = 0; updateTransform(); document.body.style.overflow="hidden"; }
