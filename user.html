@@ -403,24 +403,43 @@
              if(colorValue.length > 2 && colorValue.length < 40) document.querySelector('input[name="color"]').value = colorValue;
          }
 
-         // 7. Make & Model UI Hint (Inline Labels)
-         // දියුණු කරපු AI Logic එක (CR එකේ Make / Model අල්ලගන්න)
-         let makeMatch = text.match(/MAKE[^\n]*\n\s*([A-Z]{3,15})/i) || text.match(/MAKE[^\wA-Z]*([A-Z]{3,15})/i);
-         let modelMatch = text.match(/MODEL[^\n]*\n\s*([A-Z0-9\-]{2,15})/i) || text.match(/MODEL[^\wA-Z]*([A-Z0-9\-]{2,15})/i);
+         // 7. Make & Model UI Hint (Inline Labels - 🔥 UPGRADED 🔥)
+         let makeValue = "";
+         let modelValue = "";
 
-         if (makeMatch && makeMatch[1] && makeMatch[1].trim().length > 1) {
-             let mk = makeMatch[1].trim();
-             document.getElementById('hint-make').innerHTML = `💡 AI: <strong>${mk}</strong>`;
+         // A) Make - Database Fallback Check (Highly Accurate for SL CRs)
+         const makesList = ['BAJAJ', 'HONDA', 'TVS', 'YAMAHA', 'SUZUKI', 'TOYOTA', 'NISSAN', 'MITSUBISHI', 'HERO', 'MAHINDRA', 'TATA', 'MICRO', 'MARUTI', 'PIAGGIO', 'DEMAK', 'LEYLAND', 'ISUZU', 'MAZDA', 'KIA', 'HYUNDAI', 'FORD', 'CHEVROLET', 'MG', 'RENAULT', 'DATSUN', 'DAIHATSU', 'PEUGEOT'];
+         for(let m of makesList) {
+             if(text.includes(m)) { makeValue = m; break; }
+         }
+         // Regular Regex if not found in list
+         if(!makeValue) {
+             let makeMatch = text.match(/MAKE[\s\S]{0,40}?\b([A-Z]{3,15})\b/i);
+             if(makeMatch && makeMatch[1] !== "MODEL" && makeMatch[1] !== "AND") makeValue = makeMatch[1].trim();
+         }
+
+         // B) Model - Advanced Regex Check
+         let modelMatch = text.match(/MODEL[\s\S]{0,40}?\n\s*([A-Z0-9\-]{2,15})/i) || text.match(/MODEL[\s\S]{0,40}?\b([A-Z0-9\-]{2,15})\b/i);
+         if(modelMatch) {
+             let tempModel = modelMatch[1].trim();
+             // Prevent taking generic CR words as the model
+             let badWords = ['WHEEL', 'BASE', 'TYPE', 'BODY', 'MAKE', 'YEAR', 'COLOR', 'COLOUR', 'CAPACITY'];
+             if(!badWords.some(w => tempModel.includes(w))) {
+                 modelValue = tempModel;
+             }
+         }
+
+         // Displaying the Hints
+         if (makeValue) {
+             document.getElementById('hint-make').innerHTML = `💡 AI: <strong>${makeValue}</strong>`;
              document.getElementById('hint-make').style.display = 'inline-block';
          }
-         
-         if (modelMatch && modelMatch[1] && modelMatch[1].trim().length > 1) {
-             let md = modelMatch[1].trim();
-             document.getElementById('hint-model').innerHTML = `💡 AI: <strong>${md}</strong>`;
+         if (modelValue) {
+             document.getElementById('hint-model').innerHTML = `💡 AI: <strong>${modelValue}</strong>`;
              document.getElementById('hint-model').style.display = 'inline-block';
          }
 
-         alert("✅ Scanning Complete! Please double-check the filled details in the form.");
+         alert("✅ Scanning Complete! Please double-check the filled details and select Make/Model from dropdowns if detected.");
       }
     } catch (e) {
       alert("❌ Error connecting to OCR Server. Please fill the details manually.");
