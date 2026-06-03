@@ -85,6 +85,7 @@
     <div class="form-container">
       <h2 style="text-align:center; border-bottom: 3px solid #28a745; padding-bottom: 10px;">New Valuation Request</h2>
       
+      <!-- AI OCR Banner -->
       <div style="background: #e1f5fe; border: 2px solid #3498db; padding: 15px; border-radius: 8px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
         <div>
           <h4 style="margin: 0; color: #2980b9; display: flex; align-items: center; gap: 5px;">✨ AI Auto-Fill Assistant</h4>
@@ -349,14 +350,35 @@
             if (eMatch && /\d/.test(eMatch[1]) && eMatch[1] !== chassisVal) { document.getElementById('form-engine').value = eMatch[1].trim(); break; }
          }
 
-         // 5. Engine CC
-         let ccRegex = /\b(\d{2,4}(?:\.\d{1,2})?)\s*(?:CC|C\.C|C|00)\b/i;
+         // 5. Engine CC (Super Advanced OCR Fallback)
+         let ccRegex = /(?:CAPACITY|CYLINDER|CUBIC)[\s\S]{0,40}?\b(\d{2,5}(?:\.\d{1,2})?)\b/i;
          let ccMatch = text.match(ccRegex);
-         if (!ccMatch) ccMatch = text.match(/CAPACITY[\s\S]{0,30}?\b(\d{2,4}(?:\.\d{1,2})?)\b/i);
+
+         if (!ccMatch) ccMatch = text.match(/\b(\d{2,4}(?:\.\d{1,2})?)\s*(?:CC|C\.C|C)\b/i);
+         // If CC is misread as 00 (e.g., 99.27 CC -> 997700)
+         if (!ccMatch) ccMatch = text.match(/\b(\d{2,4})00\b/); 
+         // Just a lone number near "MOTOR CYCLE" or "LIGHT"
+         if (!ccMatch) {
+             let nearMatch = text.match(/\b(\d{4,6})\b[\s\S]{0,40}?(?:LIGHT|MOTOR\sCYCLE|CLASS)/i);
+             if(nearMatch) ccMatch = nearMatch;
+         }
+
          if (ccMatch) {
              let ccValue = ccMatch[1] ? ccMatch[1].replace(/[^0-9.]/g, '') : ccMatch[0].replace(/[^0-9.]/g, ''); 
              let num = parseFloat(ccValue);
-             if(num > 10 && num < 10000) document.querySelector('input[name="engCc"]').value = Math.round(num); 
+             
+             // Auto-Correct common OCR errors for CC
+             if (num > 8000) {
+                 let str = num.toString();
+                 // If it appended '00' instead of 'CC'
+                 if (str.endsWith('00')) num = parseFloat(str.slice(0, -2)); 
+                 // If the number is still weirdly large (missing decimal point)
+                 if (num > 8000) num = num / 100; 
+             }
+
+             if (num >= 49 && num <= 15000) {
+                 document.querySelector('input[name="engCc"]').value = Math.round(num); 
+             }
          }
 
          // 6. Color
