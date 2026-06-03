@@ -350,16 +350,14 @@
             if (eMatch && /\d/.test(eMatch[1]) && eMatch[1] !== chassisVal) { document.getElementById('form-engine').value = eMatch[1].trim(); break; }
          }
 
-         // 5. Engine CC (Super Advanced OCR Fallback)
+         // 5. Engine CC (🔴 අලුත් ගේම: 500ට අඩුවෙන් එන්න හදනවා 🔴)
          let ccRegex = /(?:CAPACITY|CYLINDER|CUBIC)[\s\S]{0,40}?\b(\d{2,5}(?:\.\d{1,2})?)\b/i;
          let ccMatch = text.match(ccRegex);
 
          if (!ccMatch) ccMatch = text.match(/\b(\d{2,4}(?:\.\d{1,2})?)\s*(?:CC|C\.C|C)\b/i);
-         // If CC is misread as 00 (e.g., 99.27 CC -> 997700)
          if (!ccMatch) ccMatch = text.match(/\b(\d{2,4})00\b/); 
-         // Just a lone number near "MOTOR CYCLE" or "LIGHT"
          if (!ccMatch) {
-             let nearMatch = text.match(/\b(\d{4,6})\b[\s\S]{0,40}?(?:LIGHT|MOTOR\sCYCLE|CLASS)/i);
+             let nearMatch = text.match(/\b(\d{3,5})\b[\s\S]{0,40}?(?:LIGHT|MOTOR\sCYCLE|CLASS|MAKE|MODEL)/i);
              if(nearMatch) ccMatch = nearMatch;
          }
 
@@ -367,16 +365,12 @@
              let ccValue = ccMatch[1] ? ccMatch[1].replace(/[^0-9.]/g, '') : ccMatch[0].replace(/[^0-9.]/g, ''); 
              let num = parseFloat(ccValue);
              
-             // Auto-Correct common OCR errors for CC
-             if (num > 8000) {
-                 let str = num.toString();
-                 // If it appended '00' instead of 'CC'
-                 if (str.endsWith('00')) num = parseFloat(str.slice(0, -2)); 
-                 // If the number is still weirdly large (missing decimal point)
-                 if (num > 8000) num = num / 100; 
+             // 500ට වඩා අඩු වෙනකම් 10න් බෙදෙනවා
+             while (num > 500) {
+                 num = num / 10;
              }
 
-             if (num >= 49 && num <= 15000) {
+             if (num >= 49 && num <= 500) {
                  document.querySelector('input[name="engCc"]').value = Math.round(num); 
              }
          }
